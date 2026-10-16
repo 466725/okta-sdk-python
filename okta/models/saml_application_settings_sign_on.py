@@ -59,14 +59,16 @@ class SamlApplicationSettingsSignOn(BaseModel):
         description="An array of ACS endpoints. You can configure a maximum of 100 endpoints.",
         alias="acsEndpoints",
     )
-    allow_multiple_acs_endpoints: StrictBool = Field(
+    allow_multiple_acs_endpoints: Optional[StrictBool] = Field(
+        default=None,
         description="Determines whether the app allows you to configure multiple ACS URIs",
         alias="allowMultipleAcsEndpoints",
     )
     assertion_encryption: Optional[SamlAssertionEncryption] = Field(
         default=None, alias="assertionEncryption"
     )
-    assertion_signed: StrictBool = Field(
+    assertion_signed: Optional[StrictBool] = Field(
+        default=None,
         description="Determines whether the SAML assertion is digitally signed",
         alias="assertionSigned",
     )
@@ -80,8 +82,9 @@ class SamlApplicationSettingsSignOn(BaseModel):
         "statement | ",
         alias="attributeStatements",
     )
-    audience: StrictStr = Field(
-        description="The entity ID of the SP. Use the entity ID value exactly as provided by the SP."
+    audience: Optional[StrictStr] = Field(
+        default=None,
+        description="The entity ID of the SP. Use the entity ID value exactly as provided by the SP.",
     )
     audience_override: Optional[StrictStr] = Field(
         default=None,
@@ -89,7 +92,8 @@ class SamlApplicationSettingsSignOn(BaseModel):
         "https://help.okta.com/en-us/Content/Topics/Apps/CASB-config-guide.htm).",
         alias="audienceOverride",
     )
-    authn_context_class_ref: StrictStr = Field(
+    authn_context_class_ref: Optional[StrictStr] = Field(
+        default=None,
         description="Identifies the SAML authentication context class for the assertion's authentication statement",
         alias="authnContextClassRef",
     )
@@ -104,8 +108,9 @@ class SamlApplicationSettingsSignOn(BaseModel):
         description="Identifies a specific application resource in an IdP-initiated SSO scenario",
         alias="defaultRelayState",
     )
-    destination: StrictStr = Field(
-        description="Identifies the location inside the SAML assertion where the SAML response should be sent"
+    destination: Optional[StrictStr] = Field(
+        default=None,
+        description="Identifies the location inside the SAML assertion where the SAML response should be sent",
     )
     destination_override: Optional[StrictStr] = Field(
         default=None,
@@ -113,16 +118,20 @@ class SamlApplicationSettingsSignOn(BaseModel):
         "https://help.okta.com/en-us/Content/Topics/Apps/CASB-config-guide.htm).",
         alias="destinationOverride",
     )
-    digest_algorithm: StrictStr = Field(
+    digest_algorithm: Optional[StrictStr] = Field(
+        default=None,
         description="Determines the digest algorithm used to digitally sign the SAML assertion and response",
         alias="digestAlgorithm",
     )
-    honor_force_authn: StrictBool = Field(
+    honor_force_authn: Optional[StrictBool] = Field(
+        default=None,
         description="Set to `true` to prompt users for their credentials when a SAML request has the `ForceAuthn` attribute "
         "set to `true`",
         alias="honorForceAuthn",
     )
-    idp_issuer: StrictStr = Field(description="SAML Issuer ID", alias="idpIssuer")
+    idp_issuer: Optional[StrictStr] = Field(
+        default=None, description="SAML Issuer ID", alias="idpIssuer"
+    )
     inline_hooks: Optional[List[SignOnInlineHook]] = Field(
         default=None,
         description="Associates the app with SAML inline hooks. See [the SAML assertion inline hook reference]("
@@ -132,8 +141,9 @@ class SamlApplicationSettingsSignOn(BaseModel):
     participate_slo: Optional[SloParticipate] = Field(
         default=None, alias="participateSlo"
     )
-    recipient: StrictStr = Field(
-        description="The location where the app may present the SAML assertion"
+    recipient: Optional[StrictStr] = Field(
+        default=None,
+        description="The location where the app may present the SAML assertion",
     )
     recipient_override: Optional[StrictStr] = Field(
         default=None,
@@ -141,11 +151,13 @@ class SamlApplicationSettingsSignOn(BaseModel):
         "https://help.okta.com/en-us/Content/Topics/Apps/CASB-config-guide.htm).",
         alias="recipientOverride",
     )
-    request_compressed: StrictBool = Field(
+    request_compressed: Optional[StrictBool] = Field(
+        default=None,
         description="Determines whether the SAML request is expected to be compressed",
         alias="requestCompressed",
     )
-    response_signed: StrictBool = Field(
+    response_signed: Optional[StrictBool] = Field(
+        default=None,
         description="Determines whether the SAML authentication response message is digitally signed by the IdP > **Note:** "
         "Either (or both) `responseSigned` or `assertionSigned` must be `TRUE`.",
         alias="responseSigned",
@@ -155,7 +167,8 @@ class SamlApplicationSettingsSignOn(BaseModel):
         description="Determines the SAML app session lifetimes with Okta",
         alias="samlAssertionLifetimeSeconds",
     )
-    signature_algorithm: StrictStr = Field(
+    signature_algorithm: Optional[StrictStr] = Field(
+        default=None,
         description="Determines the signing algorithm used to digitally sign the SAML assertion and response",
         alias="signatureAlgorithm",
     )
@@ -168,7 +181,8 @@ class SamlApplicationSettingsSignOn(BaseModel):
         description="The issuer ID for the Service Provider. This property appears when SLO is enabled.",
         alias="spIssuer",
     )
-    sso_acs_url: StrictStr = Field(
+    sso_acs_url: Optional[StrictStr] = Field(
+        default=None,
         description="Single Sign-On Assertion Consumer Service (ACS) URL",
         alias="ssoAcsUrl",
     )
@@ -178,11 +192,13 @@ class SamlApplicationSettingsSignOn(BaseModel):
         "https://help.okta.com/en-us/Content/Topics/Apps/CASB-config-guide.htm).",
         alias="ssoAcsUrlOverride",
     )
-    subject_name_id_format: StrictStr = Field(
+    subject_name_id_format: Optional[StrictStr] = Field(
+        default=None,
         description="Identifies the SAML processing rules. Supported values:",
         alias="subjectNameIdFormat",
     )
-    subject_name_id_template: StrictStr = Field(
+    subject_name_id_template: Optional[StrictStr] = Field(
+        default=None,
         description="Template for app user's username when a user is assigned to the app",
         alias="subjectNameIdTemplate",
     )
@@ -222,6 +238,9 @@ class SamlApplicationSettingsSignOn(BaseModel):
     @field_validator("authn_context_class_ref")
     def authn_context_class_ref_validate_enum(cls, value):
         """Validates the enum"""
+        if value is None:
+            return value
+
         if value not in set(
             [
                 "urn:federation:authentication:windows",
@@ -245,6 +264,9 @@ class SamlApplicationSettingsSignOn(BaseModel):
     @field_validator("digest_algorithm")
     def digest_algorithm_validate_enum(cls, value):
         """Validates the enum"""
+        if value is None:
+            return value
+
         if value not in set(["SHA1", "SHA256"]):
             raise ValueError("must be one of enum values ('SHA1', 'SHA256')")
         return value
@@ -252,6 +274,9 @@ class SamlApplicationSettingsSignOn(BaseModel):
     @field_validator("signature_algorithm")
     def signature_algorithm_validate_enum(cls, value):
         """Validates the enum"""
+        if value is None:
+            return value
+
         if value not in set(["RSA_SHA1", "RSA_SHA256"]):
             raise ValueError("must be one of enum values ('RSA_SHA1', 'RSA_SHA256')")
         return value
@@ -259,6 +284,9 @@ class SamlApplicationSettingsSignOn(BaseModel):
     @field_validator("subject_name_id_format")
     def subject_name_id_format_validate_enum(cls, value):
         """Validates the enum"""
+        if value is None:
+            return value
+
         if value not in set(
             [
                 "urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress",

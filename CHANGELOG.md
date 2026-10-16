@@ -1,5 +1,79 @@
 # Okta Python SDK Changelog
 
+# 3.4.6
+
+## Fixed
+* Fixed a `ValidationError` crash in `list_applications()` when a response page contained App Catalog / OIN SAML apps whose `settings.signOn` payload omitted boolean attributes. Removed five booleans (`allowMultipleAcsEndpoints`, `assertionSigned`, `honorForceAuthn`, `requestCompressed`, `responseSigned`) from the `required` list of the `SamlApplicationSettingsSignOn` schema so they generate as `Optional[StrictBool]` with a `None` default. These override-type apps legitimately omit these fields on GET (they carry only override deltas), and marking them `required` caused a single such app to fail deserialization for the entire paginated response. Completes the pattern applied to ten string attributes on the same schema in 3.4.3 ([#546](https://github.com/okta/okta-sdk-python/issues/546), [#580](https://github.com/okta/okta-sdk-python/pull/580)).
+
+# 3.4.5
+
+## Fixed
+* Fixed the `UserType` model being generated with only an `id` field, causing all other properties (`name`, `displayName`, `description`, `created`, `createdBy`, `default`, `lastUpdated`, `lastUpdatedBy`, `_links`) to be silently dropped when deserializing `/api/v1/meta/types/user/*` responses. Root cause was a schema name collision in `openapi/api.yaml`: the inline anonymous object on `User.type` was auto-promoted by OpenAPI Generator 7.x to a model named `UserType`, shadowing the real `UserType` component schema. Resolved by extracting the inline `User.type` object into a new `UserTypeRef` component and `$ref`ing it from `User.type`, so the real `UserType` component now generates with all defined fields. The on-wire JSON shape of `User.type` is unchanged. PR [#575](https://github.com/okta/okta-sdk-python/pull/575)
+
+# 3.4.4
+
+## Fixed
+* Fixed a `ValidationError` crash in `list_factors()` when processing users enrolled in Okta FastPass. Added missing `signed_nonce` discriminator mapping and three new component schemas (`UserFactorSignedNonce`, `UserFactorSignedNonceProfile`, `UserFactorSignedNonceProfileKey`) to properly deserialize FastPass factor payloads ([#311](https://github.com/okta/okta-sdk-python/issues/311), [387](https://github.com/okta/okta-sdk-python/issues/387)).
+* Fixed enum case mismatches in `AccessPolicyConstraint`, `KnowledgeConstraint`, and `PossessionConstraint` models. The `methods` and `types` fields now correctly accept lowercase values (e.g., `"password"`, `"push"`, `"webauthn"`) to align with actual API responses, resolving `ValidationError` exceptions raised by `list_policy_rules()` ([#548](https://github.com/okta/okta-sdk-python/issues/548)).
+
+# 3.4.3
+
+## Bug Fixes
+* Fixed a deserialization crash in `list_applications()` that occurred when processing partially configured SAML applications. The `SamlApplicationSettingsSignOn` schema was updated to remove overly strict `required` constraints on 10 fields (including `audience`, `idpIssuer`, `ssoAcsUrl`, and `recipient`), allowing the SDK to successfully parse valid API responses without throwing validation errors (#536).
+
+## Security & Dependencies
+* Upgraded package dependencies to resolve flagged Dependabot security alerts (#537, #538).
+
+# 3.4.2
+
+## Security
+* Resolved Dependabot security alerts by upgrading runtime dependencies to their latest secure versions: `aenum` 3.1.16, `aiohttp` 3.13.4, `pydash` 8.0.6, `PyJWT` 2.12.0, `PyYAML` 6.0.3, `requests` 2.33.0, and `xmltodict` 1.0.2. ([#525](https://github.com/okta/okta-sdk-python/pull/525))
+* Upgraded `pytest` to 9.0.3 and `pytest-asyncio` to 1.3.0 to address security and vulnerability concerns. ([#527](https://github.com/okta/okta-sdk-python/pull/527))
+
+## Changed
+* Bumped development and testing dependencies: `flake8` 7.3.0, `pyfakefs` 5.10.2, `pytest-mock` 3.15.1, `pytest-recording` 0.13.4, `tox` 4.30.3, and `twine` 6.2.0. ([#525](https://github.com/okta/okta-sdk-python/pull/525))
+* Upgraded GitHub Actions to current major releases: `actions/checkout` v6 and `actions/setup-python` v6 to resolve Node.js runtime deprecation warnings. ([#525](https://github.com/okta/okta-sdk-python/pull/525))
+* Updated OpenAPI Generator mustache templates (`requirements.mustache`, `setup.mustache`, `pyproject.mustache`, `test-requirements.mustache`) to reflect the new dependency versions for consistent future code generation. ([#525](https://github.com/okta/okta-sdk-python/pull/525))
+
+# 3.4.1
+
+## Fixed
+* Fixed Primitive Fallback for oneOf Deserialization in Device Assurance Model.
+
+# 3.4.0
+
+## Added
+* Implemented Demonstrating Proof-of-Possession (DPoP) for OAuth 2.0 (RFC 9449 compliant) to cryptographically bind access tokens to client keys and prevent token theft and replay attacks.
+* Added a thread-safe `DPoPProofGenerator` class featuring automatic key rotation, nonce management with auto-retry, and access token hash computation.
+* Introduced a new `get_oauth_token()` method that returns a 3-tuple including `token_type`.
+* Added support for a new tuple-based file upload format `[(field_name, (filename, filedata, mimetype))]` for multipart requests.
+* Added `Pillow` as an optional dependency, allowing users to install it via `pip install okta[images]`.
+* Added the `CAA` DNS record type to the `DNSRecordTypeDomains` enum to support custom domain operations returning CAA records.
+
+## Changed
+* Maintained backward compatibility for the legacy `get_access_token()` method, which continues to return a 2-tuple.
+* Replaced bare `except` clauses with specific exceptions and swapped bypassable `assert` statements for proper security exceptions.
+* Updated Mustache templates to preserve DPoP configurations in code generation.
+
+## Fixed
+* Fixed multipart file upload handling (such as theme image uploads) by removing the manual `Content-Type` header, which allows `aiohttp` to automatically set the proper boundary parameters.
+* Removed the `minLength: 5` constraint from `UserProfile.secondEmail` in the OpenAPI spec and Pydantic models to correctly deserialize user profiles with empty string secondary emails.
+* Fixed critical Pydantic validation errors on custom domain API endpoints (`create`, `get`, `replace`, `verify`, and `list`) by properly deserializing `CAA` records.
+* Fixed a bug where the `request_executor` timeout returned a raw string instead of an `Exception`.
+* Fixed invalid default parameter usage in `cache.get()` and restored cache cleanup logic to prevent the reuse of expired tokens.
+* Removed `threading.RLock` to prevent `asyncio` deadlocks and consolidated duplicate access token hash computations.
+* Fixed a redundant `get_dpop_error_message()` call in the `oauth` module.
+
+# 3.3.0
+
+## Features & Enhancements
+* Implemented forward compatibility for Application models to gracefully handle unknown `signOnMode` values. By introducing `ApplicationJsonConverter`, the SDK now routes and preserves unrecognized sign-on modes without triggering Pydantic validation errors, matching the behavior of the .NET SDK.
+* Added the `FAILED_TO_VERIFY` value to the `DomainValidationStatus` enum to properly track and handle domain validation failure scenarios.
+
+## Bug Fixes
+* Fixed a `ValueError` crash in `list_applications()` that occurred when processing pre-existing OIDC apps with null JWKS fields (e.g., `use`, `kty`, `alg`, `e`, `n`, `crv`). The OpenAPI spec and code generation templates were updated to properly handle nullable discriminator fields.
+* Fixed a deserialization bug where `EmailDomain` and `EmailDomainResponse` models were silently dropping critical fields (such as `id`, `domain`, `validationStatus`, and `dnsValidationRecords`). The root cause—incorrect YAML indentation in the OpenAPI `allOf` composition—was corrected, restoring complete data for the create, replace, and verify email domain endpoints.
+
 # 3.2.0
 
 * Replaced the `flatdict` dependency to fix critical configuration delimiter collisions and empty YAML crashes ([https://github.com/okta/okta-sdk-python/issues/417](https://github.com/okta/okta-sdk-python/issues/417), [https://github.com/okta/okta-sdk-python/issues/496](https://github.com/okta/okta-sdk-python/issues/496), [https://github.com/okta/okta-sdk-python/issues/499](https://github.com/okta/okta-sdk-python/issues/499)).

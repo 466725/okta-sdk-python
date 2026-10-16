@@ -57789,19 +57789,19 @@ components:
           items:
             type: string
             enum:
-              - PASSWORD
-              - SECURITY_QUESTION
-              - SMS
-              - VOICE
-              - EMAIL
-              - PUSH
-              - SIGNED_NONCE
-              - OTP
-              - TOTP
-              - WEBAUTHN
-              - DUO
-              - IDP
-              - CERT
+              - password
+              - security_question
+              - sms
+              - voice
+              - email
+              - push
+              - signed_nonce
+              - otp
+              - totp
+              - webauthn
+              - duo
+              - idp
+              - cert
           type: array
         reauthenticateIn:
           description: The duration after which the user must re-authenticate regardless of user activity. This re-authentication interval overrides the Verification Method object's `reauthenticateIn` interval. The supported values use ISO 8601 period format for recurring time intervals (for example, `PT1H`).
@@ -57814,13 +57814,13 @@ components:
           items:
             type: string
             enum:
-              - SECURITY_KEY
-              - PHONE
-              - EMAIL
-              - PASSWORD
-              - SECURITY_QUESTION
-              - APP
-              - FEDERATED
+              - security_key
+              - phone
+              - email
+              - password
+              - security_question
+              - app
+              - federated
           type: array
     AccessPolicyConstraints:
       description: Specifies constraints for the authenticator. Constraints are logically evaluated such that only one constraint object needs to be satisfied. But, within a constraint object, each constraint property must be satisfied.
@@ -62100,7 +62100,7 @@ components:
         value:
           type: string
           description: A time duration in ISO 8601 duration format.
-          pattern: ^P(?:$)(\d+Y)?(\d+M)?(\d+W)?(\d+D)?(T(?:\d)(\d+H)?(\d+M)?(\d+S)?)?$
+          pattern: ^P(?!$)(\d+Y)?(\d+M)?(\d+W)?(\d+D)?(T(?=\d)(\d+H)?(\d+M)?(\d+S)?)?$
     CAPTCHAInstance:
       title: CAPTCHAInstance
       description: ''
@@ -63370,6 +63370,7 @@ components:
       enum:
         - CNAME
         - TXT
+        - CAA
     DRStatusItem:
       description: Status whether a domain has been failed over or not
       type: object
@@ -65854,6 +65855,7 @@ components:
       type: object
       properties:
         expiry:
+          x-okta-primitive-fallback: true
           oneOf:
             - $ref: '#/components/schemas/ByDateTimeExpiry'
             - $ref: '#/components/schemas/ByDurationExpiry'
@@ -77138,22 +77140,6 @@ components:
         subjectNameIdTemplate:
           type: string
           description: Template for app user's username when a user is assigned to the app
-      required:
-        - allowMultipleAcsEndpoints
-        - assertionSigned
-        - audience
-        - authnContextClassRef
-        - destination
-        - digestAlgorithm
-        - honorForceAuthn
-        - idpIssuer
-        - recipient
-        - requestCompressed
-        - responseSigned
-        - signatureAlgorithm
-        - ssoAcsUrl
-        - subjectNameIdFormat
-        - subjectNameIdTemplate
     SamlAssertionEncryption:
       description: Determines if the app supports encrypted assertions
       type: object
@@ -80719,6 +80705,13 @@ components:
             id:
               type: string
               description: The ID of the user type
+    UserTypeRef:
+      type: object
+      description: The user type that determines the schema for the user's profile...
+      properties:
+        id:
+          type: string
+          description: The ID of the user type
     User:
       type: object
       properties:
@@ -80781,15 +80774,7 @@ components:
             - DEPROVISIONED
             - PROVISIONED
         type:
-          type: object
-          description: |-
-            The user type that determines the schema for the user's profile. The `type` property is a map that identifies the [User Types](https://developer.okta.com/docs/api/openapi/okta-management/management/tag/UserType/#tag/UserType).
-
-            Currently it contains a single element, `id`. It can be specified when creating a new user, and can be updated by an admin on a full replace of an existing user (but not a partial update).
-          properties:
-            id:
-              type: string
-              description: The ID of the user type
+          $ref: '#/components/schemas/UserTypeRef'
         _embedded:
           type: object
           description: Embedded resources related to the user using the [JSON Hypertext Application Language](https://datatracker.ietf.org/doc/html/draft-kelly-json-hal-06) specification
@@ -81011,6 +80996,7 @@ components:
           email: '#/components/schemas/UserFactorEmail'
           push: '#/components/schemas/UserFactorPush'
           question: '#/components/schemas/UserFactorSecurityQuestion'
+          signed_nonce: '#/components/schemas/UserFactorSignedNonce'
           sms: '#/components/schemas/UserFactorSMS'
           token: '#/components/schemas/UserFactorToken'
           token:hardware: '#/components/schemas/UserFactorTokenHardware'
@@ -81779,6 +81765,99 @@ components:
           description: ID for the factor credential
           example: dade.murphy@example.com
           type: string
+    UserFactorSignedNonce:
+      title: signed_nonce
+      description: |-
+        `signed_nonce` is the factor type for [Okta FastPass](https://help.okta.com/oie/en-us/content/topics/identity-engine/devices/fp/fp-main.htm). You can't use the Factors API to enroll or activate Okta FastPass (`signed_nonce`) for a user. Use the [Okta Verify](https://help.okta.com/en-us/content/topics/mobile/okta-verify-overview.htm) authenticator enrollment flow instead.
+
+        You can use the Factors API to list and delete `signed_nonce` factors.
+      allOf:
+        - $ref: '#/components/schemas/UserFactor'
+        - type: object
+          properties:
+            factorType:
+              example: signed_nonce
+            profile:
+              $ref: '#/components/schemas/UserFactorSignedNonceProfile'
+            provider:
+              enum:
+                - OKTA
+    UserFactorSignedNonceProfile:
+      description: Profile for the Okta FastPass (signed nonce) factor
+      type: object
+      readOnly: true
+      properties:
+        credentialId:
+          description: ID for the factor credential
+          example: dade.murphy@example.com
+          type: string
+        deviceType:
+          description: Type of device
+          example: SmartPhone_IPhone
+          type: string
+        name:
+          description: Name of the device
+          example: My Phone
+          type: string
+        platform:
+          description: OS platform of the associated device
+          example: IOS
+          type: string
+        version:
+          description: OS version of the associated device
+          example: '17.2'
+          type: string
+        keys:
+          description: Cryptographic keys associated with the signed nonce factor
+          type: array
+          items:
+            $ref: '#/components/schemas/UserFactorSignedNonceProfileKey'
+    UserFactorSignedNonceProfileKey:
+      description: JSON Web Key (JWK) for signed nonce verification
+      type: object
+      properties:
+        kty:
+          description: Key type
+          type: string
+          enum:
+            - RSA
+            - EC
+        use:
+          description: Key usage
+          type: string
+          example: sig
+        kid:
+          description: Key ID
+          type: string
+          example: default
+        jwkType:
+          description: Purpose of the key
+          type: string
+          enum:
+            - proofOfPossession
+            - userVerification
+            - userVerificationBioOrPin
+        e:
+          description: RSA public exponent (present only for RSA keys)
+          type: string
+        n:
+          description: RSA modulus (present only for RSA keys)
+          type: string
+        crv:
+          description: EC curve name (present only for EC keys)
+          type: string
+          example: P-256
+        x:
+          description: EC x-coordinate (present only for EC keys)
+          type: string
+        y:
+          description: EC y-coordinate (present only for EC keys)
+          type: string
+        x5c:
+          description: X.509 certificate chain
+          type: array
+          items:
+            type: string
     UserFactorYubikeyOtpToken:
       type: object
       properties:
@@ -82223,7 +82302,6 @@ components:
           type: string
           format: email
           description: The secondary email address of the user typically used for account recovery. For validation, see [RFC 5322 Section 3.2.3](https://datatracker.ietf.org/doc/html/rfc5322#section-3.2.3).
-          minLength: 5
           maxLength: 100
           nullable: true
         state:

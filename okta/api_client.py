@@ -21,7 +21,9 @@ Do not edit the class manually.
 """  # noqa: E501
 
 import datetime
+import io
 import json
+import logging
 import mimetypes
 import os
 import re
@@ -40,12 +42,15 @@ from okta import rest
 from okta.api_response import ApiResponse, T as ApiResponseT
 from okta.call_info import CallInfo
 from okta.configuration import Configuration
+from okta.constants import LOGGER_NAME
 from okta.exceptions.exceptions import (
     ApiValueError,
     ApiException,
 )
 
 RequestSerialized = Tuple[str, str, Dict[str, str], Optional[str], List[str]]
+
+logger = logging.getLogger(LOGGER_NAME)
 
 
 class ApiClient:
@@ -86,12 +91,28 @@ class ApiClient:
         # use default configuration if none is provided
         if configuration is None:
             configuration = Configuration.get_default()
-        self.configuration = Configuration(
-            host=configuration["client"]["orgUrl"],
-            access_token=configuration["client"]["token"],
-            api_key=configuration["client"].get("privateKey", None),
-            authorization_mode=configuration["client"].get("authorizationMode", "SSWS"),
-        )
+
+        # Build Configuration with DPoP support if present
+        config_params = {
+            "host": configuration["client"]["orgUrl"],
+            "access_token": configuration["client"].get("token", None),  # Use .get() to handle PrivateKey mode
+            "api_key": configuration["client"].get("privateKey", None),
+            "authorization_mode": configuration["client"].get("authorizationMode", "SSWS"),
+        }
+
+        # Store DPoP parameters in Configuration for completeness.
+        # NOTE: DPoP proof generation and header injection are handled
+        # entirely by RequestExecutor → OAuth → DPoPProofGenerator.
+        # The Configuration object stores these values but they are NOT
+        # consumed by the synchronous urllib3/RESTClientObject path.
+        if configuration["client"].get("dpopEnabled", False):
+            config_params.update({
+                "dpop_enabled": True,
+                "dpop_private_key": configuration["client"].get("privateKey"),
+                "dpop_key_rotation_interval": configuration["client"].get("dpopKeyRotationInterval", 86400),
+            })
+
+        self.configuration = Configuration(**config_params)
 
         if self.configuration.event_listeners is not None:
             if len(self.configuration.event_listeners["call_api_started"]) > 0:
@@ -187,8 +208,7 @@ class ApiClient:
         :param _request_auth: set to override the auth_settings for an a single
                               request; this effectively ignores the authentication
                               in the spec for a single request.
-        :return: tuple of form (path, http_method, query_params, header_params,
-            body, post_params, files)
+        :return: tuple of (method, url, header_params, body, post_params)
         """
 
         config = self.configuration
@@ -539,10 +559,16 @@ class ApiClient:
         return "&".join(["=".join(map(str, item)) for item in new_params])
 
     def files_parameters(self, files: Dict[str, Union[str, bytes]]):
-        """Builds form parameters.
+        """Builds form parameters for multipart file uploads.
 
-        :param files: File parameters.
-        :return: Form parameters with files.
+        When bytes are provided, automatically detects file type from magic bytes
+        and assigns appropriate filename extension (.png, .jpg, .gif).
+
+        :param files: Dict mapping field names to either:
+                      - str: File path to read
+                      - bytes: Raw file data (type auto-detected)
+        :return: List of tuples: [(field_name, (filename, filedata, mimetype)), ...]
+        :raises ValueError: If file type is unsupported
         """
         params = []
         for k, v in files.items():
@@ -550,13 +576,58 @@ class ApiClient:
                 with open(v, "rb") as f:
                     filename = os.path.basename(f.name)
                     filedata = f.read()
+                mimetype = mimetypes.guess_type(filename)[0] or "application/octet-stream"
             elif isinstance(v, bytes):
-                filename = k
                 filedata = v
+
+                # Detect file type from magic bytes
+                # Note: This is client-side detection for correct Content-Type
+                # assignment. Okta API performs server-side image validation
+                # as the security boundary.
+                if filedata.startswith(b'\x89PNG\r\n\x1a\n'):
+                    filename = f"{k}.png"
+                    mimetype = "image/png"
+                elif filedata.startswith(b'\xFF\xD8'):  # All JPEG variants start with SOI marker
+                    filename = f"{k}.jpg"
+                    mimetype = "image/jpeg"
+                elif filedata.startswith(b'GIF87a') or filedata.startswith(b'GIF89a'):
+                    filename = f"{k}.gif"
+                    mimetype = "image/gif"
+                else:
+                    # For unknown types, attempt PIL validation if available
+                    pil_validated = False
+                    try:
+                        from PIL import Image  # Lazy import — Pillow is optional
+                        img = Image.open(io.BytesIO(filedata))
+                        img_format = img.format  # Read format before verify() resets the object
+                        img.verify()  # Verify it's actually a valid image
+                        format_to_ext = {'PNG': 'png', 'JPEG': 'jpg', 'GIF': 'gif'}
+                        ext = format_to_ext.get(img_format, 'png')
+                        filename = f"{k}.{ext}"
+                        mimetype = f"image/{ext if ext != 'jpg' else 'jpeg'}"
+                        pil_validated = True
+                    except ImportError:
+                        logger.warning(
+                            "Could not detect file type from magic bytes and "
+                            "Pillow is not installed for advanced detection. "
+                            "Install it with: pip install pillow"
+                        )
+                    except Exception:
+                        logger.warning(
+                            "File type detection failed — the file may not "
+                            "be a valid image. Okta accepts PNG, JPEG, and "
+                            "GIF formats only."
+                        )
+
+                    if not pil_validated:
+                        # Fallback: default to application/octet-stream for
+                        # unrecognized types; server-side validation will
+                        # reject if the file is not a valid image.
+                        filename = f"{k}.bin"
+                        mimetype = "application/octet-stream"
             else:
                 raise ValueError("Unsupported file value")
-            mimetype = mimetypes.guess_type(filename)[0] or "application/octet-stream"
-            params.append(tuple([k, tuple([filename, filedata, mimetype])]))
+            params.append((k, (filename, filedata, mimetype)))
         return params
 
     def select_header_accept(self, accepts: List[str]) -> Optional[str]:

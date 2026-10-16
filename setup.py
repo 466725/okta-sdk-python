@@ -33,18 +33,18 @@ from setuptools import setup, find_packages  # noqa: H301
 NAME = "okta"
 PYTHON_REQUIRES = ">=3.10"
 REQUIRES = [
-    "aenum >= 3.1.11",
-    "aiohttp >= 3.12.14",
+    "aenum >= 3.1.17",
+    "aiohttp >= 3.14.3",
     "blinker >= 1.9.0",
-    'jwcrypto >= 1.5.6',
+    'jwcrypto >= 1.5.8',
     "pycryptodomex >= 3.23.0",
     "pydantic >= 2.11.3",
-    "pydash >= 8.0.5",
-    "PyJWT >= 2.10.1",
+    "pydash >= 8.0.6",
+    "PyJWT >= 2.13.0",
     "python-dateutil >= 2.9.0.post0",
-    "PyYAML >= 6.0.2",
-    "requests >= 2.32.3",
-    "xmltodict >= 0.14.2",
+    "PyYAML >= 6.0.3",
+    "requests >= 2.34.2",
+    "xmltodict >= 1.0.4",
 ]
 
 def get_version():
@@ -70,13 +70,16 @@ setup(
         "Topic :: Software Development :: Libraries :: Python Modules",
     ],
     name=NAME,
-    version="3.2.0",
+    version="3.4.6",
     description="Python SDK for the Okta Management API",
     author="Okta, Inc.",
     author_email="developer-community-products@okta.com",
     url="https://github.com/okta/okta-sdk-python",
     keywords=["OpenAPI", "OpenAPI-Generator", "Okta Admin Management"],
     install_requires=REQUIRES,
+    extras_require={
+        "images": ["pillow >= 9.0.0, < 13"],
+    },
     packages=find_packages(exclude=["test", "tests"]),
     include_package_data=True,
     license="Apache-2.0",

@@ -21,7 +21,7 @@
 """  # noqa: E501
 
 
-__version__ = "3.2.0"
+__version__ = "3.4.6"
 
 import importlib as _importlib
 import threading as _threading
@@ -1803,6 +1803,9 @@ _LAZY_IMPORT_MAP = {
     "UserFactorSMSProfile": "okta.models.user_factor_sms_profile",
     "UserFactorSecurityQuestion": "okta.models.user_factor_security_question",
     "UserFactorSecurityQuestionProfile": "okta.models.user_factor_security_question_profile",
+    "UserFactorSignedNonce": "okta.models.user_factor_signed_nonce",
+    "UserFactorSignedNonceProfile": "okta.models.user_factor_signed_nonce_profile",
+    "UserFactorSignedNonceProfileKey": "okta.models.user_factor_signed_nonce_profile_key",
     "UserFactorStatus": "okta.models.user_factor_status",
     "UserFactorSupported": "okta.models.user_factor_supported",
     "UserFactorToken": "okta.models.user_factor_token",
@@ -1895,6 +1898,7 @@ _LAZY_IMPORT_MAP = {
     "UserTypeLinksAllOfSchema": "okta.models.user_type_links_all_of_schema",
     "UserTypePostRequest": "okta.models.user_type_post_request",
     "UserTypePutRequest": "okta.models.user_type_put_request",
+    "UserTypeRef": "okta.models.user_type_ref",
     "UserVerificationEnum": "okta.models.user_verification_enum",
     "UsersLink": "okta.models.users_link",
     "UsersUpdateRequestSchema": "okta.models.users_update_request_schema",
